@@ -1,11 +1,12 @@
 from random import choice
 from time import sleep
+import os
 
 from onlinesimru import GetNumbers
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-ONLINE_SIM_TOKEN = 'f3e2bf5ca5465cf96f10aee0ed535ff4'
+ONLINE_SIM_TOKEN = os.environ['ONLINE_SIM_TOKEN']
 CHROME_DRIVER_PATH = 'chromedriver'
 
 PICKUP_ADDRESS = 'Москва, Красная площадь, 1'
@@ -38,7 +39,7 @@ for _ in range(NUMBER_TAXI_CALL):
         order_button = browser.find_element(By.XPATH, '//*[@id="application"]/div[1]/div[3]/section[1]/button')
         if order_button.get_attribute('aria-disabled') == 'false':
             order_button.click()
-            for _ in range(3):
+            for _ in range(7):
                 try:
                     sleep(3)
                     auth_code = onlinesim.stateOne(tzid=number['tzid'], message_to_code=1, msg_list=0)['msg']
