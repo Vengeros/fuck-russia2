@@ -1,10 +1,11 @@
 from selenium import webdriver
-from selenium.common.exceptions import ElementNotInteractableException
+from selenium.common.exceptions import ElementNotInteractableException, NoSuchElementException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from time import sleep
 
 CHROME_DRIVER_PATH = 'chromedriver'
-MESSAGE = 'HHH'
+VIDEO_ABSOLUTE_PATH = '/Users/volodymyr/PycharmProjects/Hack-stuffs/data/ukrain.mp4'
 
 COOKIE_AUTH_CODE = 'YOUR AUTH CODE FROM COOKIE - `AUTHCODE`'
 
@@ -22,8 +23,11 @@ for profile_link in profile_links:
     try:
         write_button = browser.find_element(By.XPATH, '//a[text()="Написать"]')
         write_button.click()
-        msg_input = browser.find_element(By.XPATH, '//msg-input[@name="input"]')
-        msg_input.send_keys(MESSAGE)  # message here
+        msg_input = browser.find_element(By.XPATH, '//input[@class="attach-file"]')
+        msg_input.send_keys(VIDEO_ABSOLUTE_PATH)
+        browser.find_element(By.XPATH, '//msg-progress[@progress="1"]')# message here
         msg_input.find_element(By.XPATH, '//msg-button[@title="Отправить"]').click()
-    except ElementNotInteractableException:
+        sleep(1)
+    except (ElementNotInteractableException, NoSuchElementException) as e:
+        print(e)
         continue
