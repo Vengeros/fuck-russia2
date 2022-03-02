@@ -16,7 +16,7 @@ browser.get('https://ok.ru/')
 browser.add_cookie({'name': 'AUTHCODE', 'value': COOKIE_AUTH_CODE})
 browser.refresh()
 
-browser.implicitly_wait(5)
+browser.implicitly_wait(3)
 
 profile_links = open('odnoclasniky_profiles.txt', 'r').readlines()
 for profile_link in profile_links:
@@ -29,6 +29,7 @@ for profile_link in profile_links:
         browser.find_element(By.XPATH, '//msg-progress[@progress="1"]')# message here
         msg_input.find_element(By.XPATH, '//msg-button[@title="Отправить"]').click()
         sleep(1)
+        browser.find_element(By.XPATH, '//*[text()="Вы слишком часто отправляете сообщения разным пользователям. Повторите попытку позже."]')
+        sleep(60 * 5)
     except (ElementNotInteractableException, NoSuchElementException) as e:
-        print(e)
         continue
