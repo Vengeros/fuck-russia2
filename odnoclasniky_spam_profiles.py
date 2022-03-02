@@ -3,9 +3,10 @@ from selenium.common.exceptions import ElementNotInteractableException, NoSuchEl
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from time import sleep
+import os
 
 CHROME_DRIVER_PATH = 'chromedriver'
-VIDEO_ABSOLUTE_PATH = '/Users/volodymyr/PycharmProjects/Hack-stuffs/data/ukrain.mp4'
+VIDEO_ABSOLUTE_PATH = os.path.abspath("data/ukrain.mp4")
 
 COOKIE_AUTH_CODE = 'YOUR AUTH CODE FROM COOKIE - `AUTHCODE`'
 
