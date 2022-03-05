@@ -23,7 +23,7 @@ SVINO_PUBLICS = [
 
 ACCOUNTS = [
     {'AUTHCODE': 'zXNvThL2k_ypv4_djhS6wFdhyGm0SQ3nrBPSzquUldHA6tJ9Rk4ilLgZ_dmT1bcJbCUVN9N0Bl0k2HbOgdsayzCA7C-5eV33ZZ8yZh_cod9wmP7c-uCGkykBU03t1uqEX-At8mU8hchSBYLv_4'},
-    *[{'login': acc[0], 'password': acc[1]} for acc in csv.reader(open('data/order2239902.txt', 'r'), delimiter=':')]
+    *[{'login': acc[0], 'password': acc[1]} for acc in csv.reader(open('data/accounts.txt', 'r'), delimiter=':')]
 ]
 
 write_queue = queue.Queue()

@@ -1,2 +1,4 @@
 /.idea/
 /venv/
+data/accounts.txt
+data/odnoclasniky_profiles.csv
