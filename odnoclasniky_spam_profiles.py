@@ -56,29 +56,27 @@ def send_messages_task(profile_links_queue, account):
         try:
             write_button = browser.find_element(By.XPATH, '//*[@id="hook_Block_MainMenu"]/div/ul/li[2]/a')
             write_button.click()
+            sleep(1)
             msg_input = browser.find_element(By.XPATH, '//input[@class="attach-file"]')
             msg_input.send_keys(VIDEO_ABSOLUTE_PATH)
             upload_done_xpath = '//msg-progress[@progress="1"]'
-            WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, upload_done_xpath)))
+            WebDriverWait(browser, 15).until(EC.presence_of_element_located((By.XPATH, upload_done_xpath)))
             browser.find_element(By.XPATH, upload_done_xpath)
-            msg_input.find_element(By.XPATH,
-                                   '//*[@id="msg_layer"]/msg-app/main/msg-page/div[2]/msg-chat/main/section/footer/msg-posting-form/div/div[1]/div[3]/msg-button[3]').click()
+            msg_input.find_element(By.XPATH, '//*[@id="msg_layer"]/msg-app/main/msg-page/div[2]/msg-chat/main/section/footer/msg-posting-form/div/div[1]/div[3]/msg-button[3]').click()
             sleep(1)
-            messages_sent += 1
             try:
-                browser.find_element(By.XPATH,
-                                     '//*[text()="Вы слишком часто отправляете сообщения разным пользователям. Повторите попытку позже."]')
+                browser.find_element(By.XPATH, '//*[text()="Вы слишком часто отправляете сообщения разным пользователям. Повторите попытку позже."]')
                 profile_links_queue.task_done()
                 break
             except NoSuchElementException:
-                pass
+                messages_sent += 1
         except (ElementNotInteractableException,
                 NoSuchElementException,
                 TimeoutException,
                 ElementClickInterceptedException) as e:
             print(f'{type(e)}: {e}')
         profile_links_queue.task_done()
-    if accounts_left := (MSG_COUNT - i):
+    if accounts_left := (MSG_COUNT - 1 - i):
         for i in range(accounts_left):
             profile_link = profile_links_queue.get()
             profile_links_queue.task_done()
