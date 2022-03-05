@@ -1,12 +1,13 @@
 import csv
 import os
 import queue
+import random
 import threading
 from time import sleep
-import random
 
 from selenium import webdriver
-from selenium.common.exceptions import ElementNotInteractableException, NoSuchElementException
+from selenium.common.exceptions import ElementNotInteractableException, NoSuchElementException, TimeoutException, \
+    ElementClickInterceptedException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -16,11 +17,14 @@ CHROME_DRIVER_PATH = os.path.abspath('chromedriver')
 VIDEO_ABSOLUTE_PATH = os.path.abspath('data/ukrain.mp4')
 PROFILES_TXT = os.path.abspath('data/odnoclasniky_profiles.txt')
 PROFILES_CSV = os.path.abspath('data/odnoclasniky_profiles.csv')
+MSG_COUNT = 10
+SIMULTANEOUS_ACCOUNTS = 7
 
-ACC_CHUNK_SIZE = 7
 ACCOUNTS = [
     *[{'login': acc[0], 'password': acc[1]} for acc in csv.reader(open('data/accounts.txt', 'r'), delimiter=':')]
 ]
+
+random.shuffle(ACCOUNTS)
 
 
 def chunks(lst, n):
@@ -28,24 +32,7 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 
-profile_links_queue = queue.Queue()
-if not os.path.exists(PROFILES_CSV):
-    profile_links = open(PROFILES_TXT, 'r').readlines()
-    with open(PROFILES_CSV, 'w', encoding='UTF8', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['account', 'proceeded'])
-        profile_links = list(set(profile_links))
-        data = [[profile_link.strip('\n'), 0] for profile_link in profile_links]
-        writer.writerows(data)
-
-profiles = list(csv.DictReader(open(PROFILES_CSV, 'r', encoding='UTF8')))
-random.shuffle(profiles)
-
-for profile in profiles:
-    profile_links_queue.put(profile['account'])
-
-
-def task(profile_links_queue, account):
+def send_messages_task(profile_links_queue, account):
     chrome_options = Options()
     prefs = {"profile.managed_default_content_settings.images": 2}
     chrome_options.add_experimental_option("prefs", prefs)
@@ -61,7 +48,9 @@ def task(profile_links_queue, account):
         browser.find_element(By.XPATH, '//input[@id="field_password"]').send_keys(password)
         browser.find_element(By.XPATH, '//input[@type="submit"]').click()
 
-    for _ in range(10):
+    messages_sent = 0
+
+    for i in range(MSG_COUNT):
         profile_link = profile_links_queue.get()
         browser.get(profile_link)
         try:
@@ -72,25 +61,64 @@ def task(profile_links_queue, account):
             upload_done_xpath = '//msg-progress[@progress="1"]'
             WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, upload_done_xpath)))
             browser.find_element(By.XPATH, upload_done_xpath)
-            msg_input.find_element(By.XPATH, '//*[@id="msg_layer"]/msg-app/main/msg-page/div[2]/msg-chat/main/section/footer/msg-posting-form/div/div[1]/div[3]/msg-button[3]').click()
+            msg_input.find_element(By.XPATH,
+                                   '//*[@id="msg_layer"]/msg-app/main/msg-page/div[2]/msg-chat/main/section/footer/msg-posting-form/div/div[1]/div[3]/msg-button[3]').click()
             sleep(1)
-            browser.find_element(By.XPATH, '//*[text()="Вы слишком часто отправляете сообщения разным пользователям. Повторите попытку позже."]')
-            break
-        except (ElementNotInteractableException, NoSuchElementException):
-            pass
+            messages_sent += 1
+            try:
+                browser.find_element(By.XPATH,
+                                     '//*[text()="Вы слишком часто отправляете сообщения разным пользователям. Повторите попытку позже."]')
+                profile_links_queue.task_done()
+                break
+            except NoSuchElementException:
+                pass
+        except (ElementNotInteractableException,
+                NoSuchElementException,
+                TimeoutException,
+                ElementClickInterceptedException) as e:
+            print(f'{type(e)}: {e}')
         profile_links_queue.task_done()
+    if accounts_left := (MSG_COUNT - i):
+        for i in range(accounts_left):
+            profile_link = profile_links_queue.get()
+            profile_links_queue.task_done()
+    print(f'{account.get("login") or account.get("token")} work is done, sent {messages_sent} messages!')
 
 
-for account_chunk in chunks(ACCOUNTS, ACC_CHUNK_SIZE):
-    workers = []
-    for account in account_chunk:
-        worker = threading.Thread(target=task, args=(profile_links_queue, account,), daemon=True)
-        workers.append(worker)
+def main():
+    profile_links_queue = queue.Queue()
+    if not os.path.exists(PROFILES_CSV):
+        profile_links = open(PROFILES_TXT, 'r').readlines()
+        with open(PROFILES_CSV, 'w', encoding='UTF8', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['account', 'proceeded'])
+            profile_links = list(set(profile_links))
+            data = [[profile_link.strip('\n'), 0] for profile_link in profile_links]
+            writer.writerows(data)
 
-    for worker in workers:
-        worker.start()
+    profiles = list(csv.DictReader(open(PROFILES_CSV, 'r', encoding='UTF8')))
+    random.shuffle(profiles)
 
-    for worker in workers:
-        worker.join()
+    profiles = profiles[:MSG_COUNT * len(ACCOUNTS)]
 
-profile_links_queue.join()
+    for profile in profiles:
+        profile_links_queue.put(profile['account'])
+
+    for account_chunk in chunks(ACCOUNTS, SIMULTANEOUS_ACCOUNTS):
+        workers = []
+        for account in account_chunk:
+            worker = threading.Thread(target=send_messages_task, args=(profile_links_queue, account,), daemon=True)
+            workers.append(worker)
+
+        for worker in workers:
+            worker.start()
+
+        for worker in workers:
+            worker.join()
+
+    profile_links_queue.join()
+    print(f"ALL DONE! EVERY ACCOUNT ({len(ACCOUNTS)}) TRIED TO SEND {MSG_COUNT} MESSAGES!")
+
+
+if __name__ == '__main__':
+    main()
